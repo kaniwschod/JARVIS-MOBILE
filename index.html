@@ -52,7 +52,7 @@ input{width:100%;background:#030b11;border:1px solid #ffffff18;color:var(--text)
 <body>
 <div class="app">
 <header>
-  <div><div class="brand">JARVIS MOBILE</div><div class="sub">19.7.6.3 · STANDALONE PWA</div></div>
+  <div><div class="brand">JARVIS MOBILE</div><div class="sub">19.7.6.4 · PRIVATE READY PWA</div></div>
   <div class="status"><span class="dot"></span><span>LOCAL ONLINE</span></div>
 </header>
 
@@ -85,6 +85,22 @@ input{width:100%;background:#030b11;border:1px solid #ffffff18;color:var(--text)
   <p class="muted" style="margin:12px 0 0">Zadania są przechowywane lokalnie w JARVIS Mobile.</p>
 </section>
 
+
+<section class="card">
+  <h2>PRIVATE MODE</h2>
+  <p class="muted" id="privateState">Nie skonfigurowano prywatnego backendu. Lokalny tryb nadal działa.</p>
+  <input id="backendUrl" placeholder="https://jarvis-private-mobile....workers.dev">
+  <div class="row" style="margin-top:10px">
+    <input id="pairCode" placeholder="Kod OWNER">
+    <button id="pairPrivate">SPARUJ</button>
+  </div>
+  <div class="row" style="margin-top:10px">
+    <button id="testPrivate">SPRAWDŹ</button>
+    <button id="logoutPrivate">ROZŁĄCZ</button>
+  </div>
+  <p class="muted" style="margin:12px 0 0">Publiczna strona nie zawiera sekretów serwera. Telefon przechowuje wyłącznie odwoływalny token sesji.</p>
+</section>
+
 <section class="card">
   <h2>PORANNA ODPRAWA</h2>
   <p class="brief" id="briefing">Naciśnij „Uruchom Morning Protocol”.</p>
@@ -105,7 +121,14 @@ input{width:100%;background:#030b11;border:1px solid #ffffff18;color:var(--text)
 
 <script>
 const $=s=>document.querySelector(s);
-const state={weather:null,tasks:[]};
+const state={weather:null,tasks:[],privateMode:false};
+const PRIVATE={get base(){return(localStorage.jarvisPrivateBackend||"").replace(/\/+$/,'')},set base(v){localStorage.jarvisPrivateBackend=(v||"").trim().replace(/\/+$/,'')},get token(){return localStorage.jarvisPrivateToken||""},set token(v){if(v)localStorage.jarvisPrivateToken=v;else localStorage.removeItem("jarvisPrivateToken")}};
+async function privateFetch(path,options={}){if(!PRIVATE.base)throw Error("Brak adresu prywatnego backendu");const headers={...(options.headers||{}),"Content-Type":"application/json"};if(PRIVATE.token)headers.Authorization="Bearer "+PRIVATE.token;const r=await fetch(PRIVATE.base+path,{...options,headers}),d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||("HTTP "+r.status));return d}
+async function refreshPrivateState(){$("#backendUrl").value=PRIVATE.base;if(!PRIVATE.base){state.privateMode=false;$("#privateState").textContent="Nie skonfigurowano prywatnego backendu. Lokalny tryb nadal działa.";return false}try{if(PRIVATE.token){const me=await privateFetch("/api/me");state.privateMode=true;$("#privateState").textContent="PRIVATE ONLINE · "+(me.device?.role||"OWNER")+" · "+(me.device?.device_name||"iPhone");await loadPrivateTasks();return true}await privateFetch("/health");state.privateMode=false;$("#privateState").textContent="Backend online. Wymagane parowanie urządzenia.";return true}catch(e){state.privateMode=false;$("#privateState").textContent="PRIVATE OFFLINE · "+e.message;return false}}
+async function pairPrivate(){PRIVATE.base=$("#backendUrl").value;const code=$("#pairCode").value.trim();if(!PRIVATE.base||!code){$("#privateState").textContent="Wpisz adres backendu i kod OWNER.";return}try{const d=await privateFetch("/pair",{method:"POST",body:JSON.stringify({code,device_name:"JARVIS Mobile iPhone"})});PRIVATE.token=d.token||"";$("#pairCode").value="";await refreshPrivateState()}catch(e){$("#privateState").textContent="Parowanie nieudane · "+e.message}}
+async function logoutPrivate(){try{if(PRIVATE.token&&PRIVATE.base)await privateFetch("/api/logout",{method:"POST",body:"{}"})}catch(_){}PRIVATE.token="";state.privateMode=false;$("#privateState").textContent="Urządzenie rozłączone. Lokalny tryb nadal działa.";loadTasks()}
+async function loadPrivateTasks(){if(!state.privateMode)return false;try{const d=await privateFetch("/api/tasks");state.tasks=(d.tasks||[]).map(t=>({id:t.id,text:t.text,done:!!t.done,private:true}));renderTasks();return true}catch(e){$("#privateState").textContent="Błąd prywatnych zadań · "+e.message;return false}}
+
 
 function fmtDate(d){return new Intl.DateTimeFormat("pl-PL",{weekday:"long",day:"numeric",month:"long"}).format(d)}
 function fmtTime(d){return new Intl.DateTimeFormat("pl-PL",{hour:"2-digit",minute:"2-digit"}).format(d)}
@@ -179,22 +202,23 @@ function loadTasks(){
   try{state.tasks=JSON.parse(localStorage.jarvisMyDayTasks||"[]")}catch(e){state.tasks=[]}
   renderTasks();
 }
-function saveTasks(){localStorage.jarvisMyDayTasks=JSON.stringify(state.tasks)}
+function saveTasks(){if(!state.privateMode)localStorage.jarvisMyDayTasks=JSON.stringify(state.tasks.map(({text,done})=>({text,done})))}
 function renderTasks(){
   const box=$("#taskList");box.textContent="";
   if(!state.tasks.length){box.innerHTML='<p class="muted">Brak zadań. Dodaj pierwsze zadanie na dziś.</p>';return}
   state.tasks.forEach((t,i)=>{
     const row=document.createElement("div");row.className="task"+(t.done?" done":"");
     const cb=document.createElement("input");cb.type="checkbox";cb.checked=!!t.done;cb.style.width="18px";
-    cb.onchange=()=>{t.done=cb.checked;saveTasks();renderTasks()};
+    cb.onchange=async()=>{t.done=cb.checked;if(state.privateMode&&t.id){try{await privateFetch("/api/tasks/"+encodeURIComponent(t.id),{method:"PATCH",body:JSON.stringify({done:t.done})})}catch(e){t.done=!t.done;$("#privateState").textContent="Nie zapisano zmiany · "+e.message}}else saveTasks();renderTasks()};
     const label=document.createElement("label");label.textContent=t.text;
-    const del=document.createElement("button");del.textContent="×";del.onclick=()=>{state.tasks.splice(i,1);saveTasks();renderTasks()};
+    const del=document.createElement("button");del.textContent="×";del.onclick=async()=>{if(state.privateMode&&t.id){try{await privateFetch("/api/tasks/"+encodeURIComponent(t.id),{method:"DELETE"});state.tasks.splice(i,1)}catch(e){$("#privateState").textContent="Nie usunięto zadania · "+e.message;return}}else{state.tasks.splice(i,1);saveTasks()}renderTasks()};
     row.append(cb,label,del);box.appendChild(row);
   });
 }
-$("#addTask").onclick=()=>{
+$("#addTask").onclick=async()=>{
   const v=$("#taskInput").value.trim();if(!v)return;
-  state.tasks.push({text:v,done:false});$("#taskInput").value="";saveTasks();renderTasks();
+  if(state.privateMode){try{const d=await privateFetch("/api/tasks",{method:"POST",body:JSON.stringify({text:v})});state.tasks.push({id:d.task.id,text:d.task.text,done:false,private:true})}catch(e){$("#privateState").textContent="Nie dodano zadania · "+e.message;return}}else{state.tasks.push({text:v,done:false});saveTasks()}
+  $("#taskInput").value="";renderTasks();
 };
 
 function buildBriefing(){
@@ -235,6 +259,10 @@ $("#stopSpeak").onclick=()=>speechSynthesis&&speechSynthesis.cancel();
 
 loadTasks();
 loadWeather();
+$("#pairPrivate").onclick=pairPrivate;
+$("#testPrivate").onclick=async()=>{PRIVATE.base=$("#backendUrl").value;await refreshPrivateState()};
+$("#logoutPrivate").onclick=logoutPrivate;
+refreshPrivateState();
 
 if("serviceWorker" in navigator){
   navigator.serviceWorker.register("./service-worker.js").catch(()=>{});
