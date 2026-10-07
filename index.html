@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#020914">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="JARVIS">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="apple-touch-icon" href="./icon-192.svg">
+<title>JARVIS Mobile</title>
+<style>
+:root{
+  --bg:#020914;--card:#071521;--text:#eaf9ff;--muted:#83a7b7;
+  --accent:#42d9ff;--accent2:#9defff;--ok:#3dffb2;--danger:#ff5964;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:
+radial-gradient(circle at 20% 0%,#0a6d8f42,transparent 33%),
+radial-gradient(circle at 100% 35%,#5d218044,transparent 35%),var(--bg);
+color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+body{padding:max(18px,env(safe-area-inset-top)) 16px max(22px,env(safe-area-inset-bottom))}
+.app{max-width:520px;margin:auto}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:4px 0 18px}
+.brand{font-weight:700;letter-spacing:3px}.sub{font-size:11px;color:var(--muted);margin-top:4px}
+.status{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--muted)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--ok);box-shadow:0 0 12px var(--ok)}
+.card{background:linear-gradient(180deg,#0b1b29ee,#06111bee);border:1px solid #64dcff22;
+box-shadow:inset 0 0 0 1px #ffffff05,0 14px 45px #0009;border-radius:22px;padding:18px;margin:12px 0}
+.hero{text-align:center;padding:30px 18px}
+.core{width:142px;height:142px;margin:0 auto 18px;border-radius:50%;position:relative;
+border:2px solid var(--accent);box-shadow:0 0 28px #42d9ff55,inset 0 0 25px #42d9ff22}
+.core:before,.core:after{content:"";position:absolute;border-radius:50%;inset:17px;border:1px dashed var(--accent2);opacity:.7}
+.core:after{inset:43px;background:radial-gradient(circle,#dffcff 0 18%,#56e2ff 19% 30%,#102a35 31% 100%);border:1px solid var(--accent)}
+h1,h2,p{margin-top:0}h1{font-size:22px;letter-spacing:2px}h2{font-size:15px;letter-spacing:1px}
+.bigtime{font-size:34px;font-weight:300;letter-spacing:1px;margin:6px 0}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.metric{background:#ffffff06;border:1px solid #ffffff0b;border-radius:15px;padding:12px}
+.metric b{display:block;font-size:19px;margin-top:5px}.metric span{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
+button,.btn{appearance:none;border:1px solid #5adfff55;background:#0d2634;color:var(--text);padding:13px 14px;border-radius:14px;
+font:600 13px inherit;letter-spacing:.4px;text-decoration:none;display:inline-flex;align-items:center;justify-content:center}
+button.primary{width:100%;background:linear-gradient(180deg,#1bcbed,#0789a9);border-color:#7defff88;color:#00151d}
+button:disabled{opacity:.45}.row{display:flex;gap:9px;flex-wrap:wrap}.row>*{flex:1}
+.brief{line-height:1.58;font-size:15px}.muted{color:var(--muted);font-size:12px;line-height:1.5}
+input{width:100%;background:#030b11;border:1px solid #ffffff18;color:var(--text);padding:12px;border-radius:12px;font:inherit}
+.task{display:flex;gap:10px;align-items:center;padding:11px 0;border-bottom:1px solid #ffffff0a}
+.task:last-child{border-bottom:0}.task label{flex:1}.task.done label{text-decoration:line-through;color:var(--muted)}
+.task button{flex:0;padding:8px 10px}.note{border-left:3px solid var(--accent);padding:8px 12px;background:#42d9ff0b;border-radius:8px;font-size:12px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="app">
+<header>
+  <div><div class="brand">JARVIS MOBILE</div><div class="sub">19.7.6.3 · STANDALONE PWA</div></div>
+  <div class="status"><span class="dot"></span><span>LOCAL ONLINE</span></div>
+</header>
+
+<section class="card hero">
+  <div class="core"></div>
+  <h1>GOOD MORNING, SIR</h1>
+  <div class="bigtime" id="clock">--:--</div>
+  <p class="muted" id="today">Ładowanie daty…</p>
+  <button class="primary" id="morningButton">URUCHOM MORNING PROTOCOL</button>
+</section>
+
+<section class="card">
+  <h2>POGODA</h2>
+  <div class="grid">
+    <div class="metric"><span>Temperatura</span><b id="temp">—</b></div>
+    <div class="metric"><span>Wilgotność</span><b id="humidity">—</b></div>
+    <div class="metric"><span>Opady</span><b id="rain">—</b></div>
+    <div class="metric"><span>Warunki</span><b id="condition" style="font-size:14px">—</b></div>
+  </div>
+  <p class="muted" id="weatherHint" style="margin:12px 0 0">Pogoda zostanie pobrana z lokalizacji telefonu.</p>
+</section>
+
+<section class="card">
+  <h2>MY DAY</h2>
+  <div id="taskList"></div>
+  <div class="row" style="margin-top:12px">
+    <input id="taskInput" placeholder="Dodaj zadanie na dziś">
+    <button id="addTask">DODAJ</button>
+  </div>
+  <p class="muted" style="margin:12px 0 0">Zadania są przechowywane lokalnie w JARVIS Mobile.</p>
+</section>
+
+<section class="card">
+  <h2>PORANNA ODPRAWA</h2>
+  <p class="brief" id="briefing">Naciśnij „Uruchom Morning Protocol”.</p>
+  <div class="row">
+    <button id="speakAgain">POWTÓRZ</button>
+    <button id="stopSpeak">STOP</button>
+  </div>
+</section>
+
+<section class="card">
+  <h2>INSTALACJA</h2>
+  <div class="note">
+    Otwórz tę stronę w Safari → Udostępnij → Dodaj do ekranu początkowego.
+    Po instalacji JARVIS działa jako PWA i nie wymaga włączonego komputera.
+  </div>
+</section>
+</div>
+
+<script>
+const $=s=>document.querySelector(s);
+const state={weather:null,tasks:[]};
+
+function fmtDate(d){return new Intl.DateTimeFormat("pl-PL",{weekday:"long",day:"numeric",month:"long"}).format(d)}
+function fmtTime(d){return new Intl.DateTimeFormat("pl-PL",{hour:"2-digit",minute:"2-digit"}).format(d)}
+function tick(){const n=new Date();$("#clock").textContent=fmtTime(n);$("#today").textContent=fmtDate(n)}
+tick();setInterval(tick,1000);
+
+function weatherText(code){
+  if(code===0)return"bezchmurnie";
+  if([1,2].includes(code))return"częściowe zachmurzenie";
+  if(code===3)return"pochmurno";
+  if([45,48].includes(code))return"mgła";
+  if(code>=51&&code<=57)return"mżawka";
+  if(code>=61&&code<=67)return"deszcz";
+  if(code>=71&&code<=77)return"śnieg";
+  if(code>=80&&code<=82)return"przelotne opady";
+  if(code>=85&&code<=86)return"przelotny śnieg";
+  if(code>=95)return"burza";
+  return"zmienne warunki";
+}
+
+async function getPosition(){
+  return new Promise((resolve,reject)=>{
+    if(!navigator.geolocation)return reject(Error("Brak geolokalizacji"));
+    navigator.geolocation.getCurrentPosition(resolve,reject,{enableHighAccuracy:false,timeout:12000,maximumAge:15*60*1000});
+  });
+}
+
+async function loadWeather(){
+  $("#weatherHint").textContent="Pobieram pogodę…";
+  try{
+    const pos=await getPosition(),{latitude,longitude}=pos.coords;
+    const u=new URL("https://api.open-meteo.com/v1/forecast");
+    u.searchParams.set("latitude",latitude);u.searchParams.set("longitude",longitude);
+    u.searchParams.set("current","temperature_2m,relative_humidity_2m,weather_code");
+    u.searchParams.set("hourly","precipitation_probability");
+    u.searchParams.set("forecast_days","1");u.searchParams.set("timezone","auto");
+    const r=await fetch(u);if(!r.ok)throw Error("HTTP "+r.status);
+    const j=await r.json();
+    const hour=new Date().getHours();
+    const prob=(j.hourly&&j.hourly.precipitation_probability&&j.hourly.precipitation_probability[hour])??0;
+    state.weather={
+      temp:Math.round(j.current.temperature_2m),
+      humidity:Math.round(j.current.relative_humidity_2m),
+      rain:Math.round(prob),
+      condition:weatherText(j.current.weather_code)
+    };
+    $("#temp").textContent=state.weather.temp+"°C";
+    $("#humidity").textContent=state.weather.humidity+"%";
+    $("#rain").textContent=state.weather.rain+"%";
+    $("#condition").textContent=state.weather.condition;
+    $("#weatherHint").textContent="Aktualizacja: "+fmtTime(new Date());
+    localStorage.jarvisLocalWeather=JSON.stringify({...state.weather,ts:Date.now()});
+    return state.weather;
+  }catch(e){
+    try{
+      const cached=JSON.parse(localStorage.jarvisLocalWeather||"null");
+      if(cached){
+        state.weather=cached;
+        $("#temp").textContent=cached.temp+"°C";$("#humidity").textContent=cached.humidity+"%";
+        $("#rain").textContent=cached.rain+"%";$("#condition").textContent=cached.condition;
+        $("#weatherHint").textContent="Offline — pokazuję ostatnią zapisaną pogodę.";
+        return cached;
+      }
+    }catch(_){}
+    $("#weatherHint").textContent="Nie udało się pobrać pogody: "+(e.message||e);
+    return null;
+  }
+}
+
+function loadTasks(){
+  try{state.tasks=JSON.parse(localStorage.jarvisMyDayTasks||"[]")}catch(e){state.tasks=[]}
+  renderTasks();
+}
+function saveTasks(){localStorage.jarvisMyDayTasks=JSON.stringify(state.tasks)}
+function renderTasks(){
+  const box=$("#taskList");box.textContent="";
+  if(!state.tasks.length){box.innerHTML='<p class="muted">Brak zadań. Dodaj pierwsze zadanie na dziś.</p>';return}
+  state.tasks.forEach((t,i)=>{
+    const row=document.createElement("div");row.className="task"+(t.done?" done":"");
+    const cb=document.createElement("input");cb.type="checkbox";cb.checked=!!t.done;cb.style.width="18px";
+    cb.onchange=()=>{t.done=cb.checked;saveTasks();renderTasks()};
+    const label=document.createElement("label");label.textContent=t.text;
+    const del=document.createElement("button");del.textContent="×";del.onclick=()=>{state.tasks.splice(i,1);saveTasks();renderTasks()};
+    row.append(cb,label,del);box.appendChild(row);
+  });
+}
+$("#addTask").onclick=()=>{
+  const v=$("#taskInput").value.trim();if(!v)return;
+  state.tasks.push({text:v,done:false});$("#taskInput").value="";saveTasks();renderTasks();
+};
+
+function buildBriefing(){
+  const parts=["Dzień dobry, sir.","Mamy godzinę "+fmtTime(new Date())+"."];
+  const w=state.weather;
+  if(w){
+    parts.push("Na zewnątrz jest "+w.temp+" stopni. Warunki: "+w.condition+". Wilgotność wynosi "+w.humidity+" procent.");
+    if(w.rain>=30)parts.push("Możliwość opadów wynosi "+w.rain+" procent.");
+  }
+  const open=state.tasks.filter(t=>!t.done);
+  if(open.length){
+    parts.push("Na dziś mamy "+open.length+(open.length===1?" zadanie.":" zadania."));
+    parts.push("Powinniśmy zacząć od: "+open[0].text+".");
+  }else{
+    parts.push("Nie masz jeszcze zapisanych zadań na dziś.");
+  }
+  return parts.join(" ");
+}
+
+function speak(text){
+  if(!("speechSynthesis" in window))return;
+  speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(text);
+  u.lang="pl-PL";u.rate=.92;u.pitch=.95;u.volume=1;
+  speechSynthesis.speak(u);
+}
+
+async function morning(){
+  $("#morningButton").disabled=true;$("#morningButton").textContent="PRZYGOTOWUJĘ ODPRAWĘ…";
+  await loadWeather();
+  const txt=buildBriefing();$("#briefing").textContent=txt;speak(txt);
+  localStorage.jarvisLastMorning=JSON.stringify({ts:Date.now(),text:txt});
+  $("#morningButton").disabled=false;$("#morningButton").textContent="URUCHOM MORNING PROTOCOL";
+}
+$("#morningButton").onclick=morning;
+$("#speakAgain").onclick=()=>speak($("#briefing").textContent);
+$("#stopSpeak").onclick=()=>speechSynthesis&&speechSynthesis.cancel();
+
+loadTasks();
+loadWeather();
+
+if("serviceWorker" in navigator){
+  navigator.serviceWorker.register("./service-worker.js").catch(()=>{});
+}
+const params=new URLSearchParams(location.search);
+if(params.get("morning")==="1")setTimeout(morning,700);
+</script>
+</body>
+</html>
